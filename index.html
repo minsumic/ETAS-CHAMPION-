@@ -386,10 +386,9 @@
     <div class="bottom-grid">
       <div class="panel">
         <div class="panel-title">เปรียบเทียบเฉลี่ยผิด/คน รายเดือน</div>
-        <div class="chart-wrap">
-          <canvas id="barChart" role="img" aria-label="กราฟเปรียบเทียบค่าเฉลี่ยผิดต่อคนรายเดือนแต่ละทีม"></canvas>
+        <div class="chart-wrap" style="height:320px;">
+          <canvas id="barChart" role="img" aria-label="กราฟแท่งแนวนอนเปรียบเทียบค่าเฉลี่ยผิดต่อคนแต่ละทีมรายเดือน"></canvas>
         </div>
-        <div class="legend" id="bar-legend"></div>
       </div>
       <div class="panel">
         <div class="panel-title">🏆 อันดับ Season — เรียงที่ 1 ลงมา</div>
@@ -522,38 +521,35 @@ async function loadData() {
 
     // BAR CHART
     if (chartInst) { chartInst.destroy(); chartInst = null; }
-    chartInst = new Chart(document.getElementById("barChart"), {
+    if (window._barChart) { window._barChart.destroy(); window._barChart = null; }
+    window._barChart = new Chart(document.getElementById("barChart"), {
       type: "bar",
       data: {
-        labels: monthsWithData,
-        datasets: data.map((d, i) => ({
-          label: d.team,
-          data: monthsWithData.map((m) => {
-            const mi = MONTHS.indexOf(m);
-            return d.avgs[mi] !== null ? parseFloat(d.avgs[mi].toFixed(2)) : null;
+        labels: data.map(d => d.team),
+        datasets: monthsWithData.map((m, mi) => ({
+          label: m,
+          data: data.map(d => {
+            const idx = MONTHS.indexOf(m);
+            return d.avgs[idx] !== null ? parseFloat(d.avgs[idx].toFixed(2)) : null;
           }),
-          backgroundColor: COLORS[i % COLORS.length] + "99",
-          borderColor: COLORS[i % COLORS.length],
-          borderWidth: 2, borderRadius: 5,
+          backgroundColor: ["#FFD600","#06D6A0","#FF6B35","#A78BFA"][mi % 4] + "99",
+          borderColor:      ["#FFD600","#06D6A0","#FF6B35","#A78BFA"][mi % 4],
+          borderWidth: 2, borderRadius: 4,
         }))
       },
       options: {
+        indexAxis: "y",
         responsive: true, maintainAspectRatio: false,
-        plugins: { legend: { display: false } },
+        plugins: { legend: { display: true, position: "top", labels: { color: "rgba(255,255,255,0.5)", font:{size:10}, boxWidth:10 } } },
         scales: {
-          x: { ticks: { color: "rgba(255,255,255,0.4)", font:{size:11} }, grid: { color: "rgba(255,255,255,0.04)" } },
-          y: { ticks: { color: "rgba(255,255,255,0.4)", font:{size:11} }, grid: { color: "rgba(255,255,255,0.04)" },
-               title: { display: true, text: "เฉลี่ยผิด/คน", color: "rgba(255,255,255,0.3)", font:{size:10} } }
+          x: { ticks: { color: "rgba(255,255,255,0.4)", font:{size:10} }, grid: { color: "rgba(255,255,255,0.04)" },
+               title: { display: true, text: "เฉลี่ยผิด/คน (น้อย=ดี)", color: "rgba(255,255,255,0.3)", font:{size:10} } },
+          y: { ticks: { color: "rgba(255,255,255,0.6)", font:{size:10} }, grid: { color: "rgba(255,255,255,0.04)" } }
         }
       }
     });
 
     // Legend
-    const leg = document.getElementById("bar-legend"); leg.innerHTML = "";
-    data.forEach((d, i) => {
-      const c = COLORS[i % COLORS.length];
-      leg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${d.team}</div>`;
-    });
 
     // SEASON RANK — เรียงอันดับ 1 ลงมา (data เรียงแล้ว)
     const sl = document.getElementById("season-list"); sl.innerHTML = "";
