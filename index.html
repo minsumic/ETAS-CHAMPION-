@@ -199,6 +199,31 @@
   .season-score { font-size: 18px; font-weight: 900; }
   .season-lbl { font-size: 9px; color: rgba(255,255,255,0.3); font-family:'Sarabun',sans-serif; text-align: right; }
 
+  /* ── ANNOUNCE BANNER ── */
+  .announce-banner {
+    background: linear-gradient(135deg, #FF6B35 0%, #FFD600 100%);
+    border-radius: 14px; margin-bottom: 16px;
+    padding: 14px 20px;
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  }
+  .announce-left { display: flex; align-items: center; gap: 12px; }
+  .announce-icon { font-size: 28px; animation: ring 2.5s ease-in-out infinite; }
+  @keyframes ring {
+    0%,100%{transform:rotate(0)} 10%{transform:rotate(-15deg)} 20%{transform:rotate(15deg)}
+    30%{transform:rotate(-10deg)} 40%{transform:rotate(10deg)} 50%{transform:rotate(0)}
+  }
+  .announce-text h2 { font-size: 15px; font-weight: 900; color: #1A1A2E; letter-spacing: 1px; }
+  .announce-text p { font-size: 11px; color: rgba(0,0,0,0.65); font-family:'Sarabun',sans-serif; margin-top: 2px; }
+  .announce-date { text-align: right; flex-shrink: 0; }
+  .announce-date .big { font-size: 22px; font-weight: 900; color: #1A1A2E; line-height: 1; }
+  .announce-date .sm { font-size: 10px; color: rgba(0,0,0,0.6); font-family:'Sarabun',sans-serif; }
+
+  /* ── COUNTDOWN ── */
+  .countdown-row { display: grid; grid-template-columns: repeat(4,1fr); gap: 8px; margin-bottom: 16px; }
+  .cd-box { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 10px 8px; text-align: center; }
+  .cd-num { font-size: 28px; font-weight: 900; color: var(--gold); line-height: 1; }
+  .cd-lbl { font-size: 10px; color: rgba(255,255,255,0.35); font-family:'Sarabun',sans-serif; margin-top: 3px; }
+
   /* ── FOOTER ── */
   .footer {
     text-align: center; padding: 20px;
@@ -253,6 +278,29 @@
 
 <!-- CONTAINER -->
 <div class="container">
+
+  <!-- ANNOUNCE BANNER -->
+  <div class="announce-banner">
+    <div class="announce-left">
+      <div class="announce-icon">🔔</div>
+      <div class="announce-text">
+        <h2>ประกาศผล ETAS 1st TEAM CHAMPION</h2>
+        <p>โรงไฟฟ้าวังน้อย &nbsp;|&nbsp; "ทีมเดียวกัน ไม่ทิ้งกัน" &nbsp;|&nbsp; ระยะเวลา พ.ค.–ส.ค. 2569</p>
+      </div>
+    </div>
+    <div class="announce-date">
+      <div class="big">1 ก.ย. 69</div>
+      <div class="sm">วันประกาศผล</div>
+    </div>
+  </div>
+
+  <!-- COUNTDOWN -->
+  <div class="countdown-row">
+    <div class="cd-box"><div class="cd-num" id="cd-d">—</div><div class="cd-lbl">วัน</div></div>
+    <div class="cd-box"><div class="cd-num" id="cd-h">—</div><div class="cd-lbl">ชั่วโมง</div></div>
+    <div class="cd-box"><div class="cd-num" id="cd-m">—</div><div class="cd-lbl">นาที</div></div>
+    <div class="cd-box"><div class="cd-num" id="cd-s">—</div><div class="cd-lbl">วินาที</div></div>
+  </div>
 
   <!-- STATUS -->
   <div class="status-bar">
@@ -509,14 +557,28 @@ async function loadData() {
       <div style="text-align:center;color:rgba(255,255,255,0.3);max-width:400px">
         <div style="font-size:32px;margin-bottom:12px">⚠️</div>
         <div style="font-size:14px;color:#FB7185;margin-bottom:8px">${err.message}</div>
-        <div style="font-size:12px;line-height:1.8">
-          ตรวจสอบว่า Google Sheet ตั้งค่าเป็น<br>
-          <strong style="color:#FFD600">"Anyone with the link can view"</strong><br>
-          และกรอกข้อมูลในชีต ข้อมูลดิบ แล้ว
-        </div>
       </div>`;
   }
 }
+
+// ── Countdown ──────────────────────────────────────────────
+function updateCountdown() {
+  const target = new Date("2026-09-01T00:00:00+07:00");
+  const diff = target - new Date();
+  if (diff <= 0) {
+    document.getElementById("cd-d").textContent = "🎉";
+    document.getElementById("cd-h").textContent = "ประกาศ";
+    document.getElementById("cd-m").textContent = "ผล";
+    document.getElementById("cd-s").textContent = "แล้ว";
+    return;
+  }
+  document.getElementById("cd-d").textContent = Math.floor(diff/86400000);
+  document.getElementById("cd-h").textContent = String(Math.floor((diff%86400000)/3600000)).padStart(2,"0");
+  document.getElementById("cd-m").textContent = String(Math.floor((diff%3600000)/60000)).padStart(2,"0");
+  document.getElementById("cd-s").textContent = String(Math.floor((diff%60000)/1000)).padStart(2,"0");
+}
+updateCountdown();
+setInterval(updateCountdown, 1000);
 
 // Auto refresh ทุก 5 นาที
 loadData();
