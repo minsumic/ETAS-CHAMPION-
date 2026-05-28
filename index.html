@@ -363,7 +363,7 @@
         <div class="legend" id="bar-legend"></div>
       </div>
       <div class="panel">
-        <div class="panel-title">อันดับสุดท้าย Season</div>
+        <div class="panel-title">🏆 อันดับ Season — เรียงที่ 1 ลงมา</div>
         <div id="season-list"></div>
       </div>
     </div>
@@ -381,13 +381,17 @@
 // ══════════════════════════════════════════════════════════
 // ⚙️  ตั้งค่า: ใส่ Sheet ID ของคุณที่นี่
 // ══════════════════════════════════════════════════════════
-const SHEET_ID = "1cvzGyefRcz08YTCEY1hm2c02ou_HP3wV";
+const SHEET_ID = "1dhWOR4QtFGduL0KNSEgJve3btqKHQ6muyOKHo8uhWTw";
 const SHEET_NAME = encodeURIComponent("📋 ข้อมูลดิบ");
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
-// Col index (0-based): A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9
-// K=10,L=11,M=12,N=13,O=14(sum),P=15(season),Q=16(rank)
-const COL_TEAM = 1, COL_AVGS = [10,11,12,13], COL_SEASON = 15, COL_RANK = 16;
+// Sheet ใหม่มี merged cols ทำให้ CSV มีคอลัมน์เพิ่ม:
+// A=0(#), B=1(ทีม), C=2(empty-merged), D=3(พ.ค.คน), E=4(พ.ค.ผิด),
+// F=5(empty), G=6(มิ.ย.คน), H=7(มิ.ย.ผิด), I=8(empty), J=9(ก.ค.คน),
+// K=10(ก.ค.ผิด), L=11(empty), M=12(ส.ค.คน), N=13(ส.ค.ผิด), O=14(empty),
+// P=15(avg พ.ค.), Q=16(avg มิ.ย.), R=17(avg ก.ค.), S=18(avg ส.ค.),
+// T=19(รวม), U=20(season), V=21(rank)
+const COL_TEAM = 1, COL_AVGS = [15,16,17,18], COL_SEASON = 20, COL_RANK = 21;
 const MONTHS = ["พ.ค.","มิ.ย.","ก.ค.","ส.ค."];
 const COLORS = ["#FFD600","#00C896","#FF6B35","#A78BFA","#38BDF8","#FB7185","#4ADE80","#F472B6","#FCD34D","#60A5FA"];
 
@@ -418,15 +422,24 @@ async function loadData() {
     if (!res.ok) throw new Error("ดึงข้อมูลไม่ได้ (HTTP " + res.status + ")");
     const rows = parseCSV(await res.text());
 
-    // หา data rows (มีชื่อทีมจริง ไม่ใช่ placeholder)
+    // หา data rows — ข้ามแถว header, placeholder, และแถวว่าง
     const data = [];
     for (const r of rows) {
       const team = r[COL_TEAM]?.trim();
-      if (!team || team.startsWith("←") || team.includes("ชื่อ") || team.includes("แผนก /")) continue;
-      const season = parseFloat(r[COL_SEASON]);
+      if (!team || team.startsWith("←") || team.includes("ชื่อ") || team.includes("แผนก /") || team.includes("ทีม")) continue;
+      if (team.startsWith("#") || team.startsWith("📅") || team.startsWith("📊")) continue;
+      const seasonRaw = r[COL_SEASON]?.trim();
+      if (!seasonRaw || seasonRaw === "-" || seasonRaw === "") continue;
+      const season = parseFloat(seasonRaw);
       if (isNaN(season)) continue;
-      const rank = parseInt(r[COL_RANK]);
-      const avgs = COL_AVGS.map(c => isNaN(parseFloat(r[c])) ? null : parseFloat(r[c]));
+      const rankRaw = r[COL_RANK]?.trim();
+      const rank = (!rankRaw || rankRaw === "-") ? 999 : parseInt(rankRaw);
+      const avgs = COL_AVGS.map(c => {
+        const v = r[c]?.trim();
+        if (!v || v === "-" || v === "") return null;
+        const n = parseFloat(v);
+        return isNaN(n) ? null : n;
+      });
       data.push({ team, season, rank: isNaN(rank) ? 999 : rank, avgs });
     }
 
@@ -533,18 +546,30 @@ async function loadData() {
       leg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${d.team}</div>`;
     });
 
-    // SEASON RANK
+    // SEASON RANK — เรียงอันดับ 1 ลงมา
     const sl = document.getElementById("season-list"); sl.innerHTML = "";
-    const medals = ["🥇","🥈","🥉"];
-    data.forEach((d, i) => {
-      const col = COLORS[i % COLORS.length];
-      const medal = i < 3 ? medals[i] : `#${i+1}`;
+    const ranked = [...data].sort((a,b) => a.rank - b.rank);
+    ranked.forEach((d, i) => {
+      const col = COLORS[data.indexOf(d) % COLORS.length];
+      const isTop3 = d.rank <= 3;
+      const medal = d.rank === 1 ? "🥇" : d.rank === 2 ? "🥈" : d.rank === 3 ? "🥉" : null;
+      const rankDisplay = medal || `<span style="font-size:13px;font-weight:900;color:rgba(255,255,255,0.4)">#${d.rank}</span>`;
+      const maxS = Math.max(...ranked.map(x=>x.season));
+      const pct = Math.round(d.season / maxS * 100);
       sl.innerHTML += `
-        <div class="season-item">
-          <div class="season-medal">${medal}</div>
-          <div style="flex:1"><div class="season-name">${d.team}</div><div class="season-lbl" style="color:rgba(255,255,255,0.3)">เฉลี่ยรวม Season</div></div>
-          <div><div class="season-score" style="color:${col}">${d.season.toFixed(2)}</div><div class="season-lbl">ผิด/คน</div></div>
-        </div>`;
+        <div class="season-item" style="${isTop3 ? 'border-color:rgba(255,214,0,0.2);' : ''}">
+          <div class="season-medal">${rankDisplay}</div>
+          <div style="flex:1;min-width:0;">
+            <div class="season-name" style="color:${col}">${d.team}</div>
+            <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:5px;">
+              <div style="height:3px;border-radius:2px;background:${col};width:${pct}%;"></div>
+            </div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div class="season-score" style="color:${col}">${d.season.toFixed(2)}</div>
+            <div class="season-lbl">ผิด/คน</div>
+          </div>
+        </div>`; 
     });
 
     document.getElementById("loading-area").style.display = "none";
