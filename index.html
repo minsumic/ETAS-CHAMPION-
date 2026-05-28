@@ -327,7 +327,7 @@
       <div class="sum-card">
         <div class="sum-icon">🥇</div>
         <div class="sum-num" id="s-champ" style="font-size:16px;">—</div>
-        <div class="sum-lbl">ทีมนำอันดับ 1</div>
+        <div class="sum-lbl">🏆 Team Champion</div>
       </div>
       <div class="sum-card">
         <div class="sum-icon">📅</div>
@@ -445,7 +445,7 @@ async function loadData() {
       div.innerHTML = `
         <div class="lb-rank ${rClass}">${rLabel}</div>
         <div class="lb-info">
-          <div class="lb-name">${d.team}${d.rank === 1 && rank1Teams.length > 1 ? ' <span style="font-size:10px;color:#FFD600;font-weight:400">(เสมอ)</span>' : ''}</div>
+          <div class="lb-name">${d.team}${d.rank === 1 ? ' 🏆' : ''}</div>
           <div class="lb-bar-bg"><div class="lb-bar" style="width:0%;background:${col}" data-w="${pct}"></div></div>
         </div>
         <div class="lb-right">
@@ -527,7 +527,7 @@ async function loadData() {
         <div class="season-item" style="${isTop3 ? 'border-color:rgba(255,214,0,0.2);' : ''}">
           <div class="season-medal">${rankDisplay}</div>
           <div style="flex:1;min-width:0;">
-            <div class="season-name" style="color:${col}">${d.team}${d.rank === 1 && rank1Teams.length > 1 ? ' <span style="font-size:10px;font-weight:400;color:#FFD600">(เสมอ)</span>' : ''}</div>
+            <div class="season-name" style="color:${col};${d.rank === 1 ? 'font-size:15px;font-weight:900;' : ''}">${d.team}${d.rank === 1 ? ' 🏆' : ''}</div>
             <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:5px;">
               <div style="height:3px;border-radius:2px;background:${col};width:${pct}%;"></div>
             </div>
