@@ -397,6 +397,21 @@
       </div>
     </div>
 
+    <!-- LINE CHART + MOST IMPROVED -->
+    <div class="bottom-grid" style="margin-top:12px;">
+      <div class="panel">
+        <div class="panel-title">📈 กราฟเส้นพัฒนาการรายเดือน</div>
+        <div class="chart-wrap">
+          <canvas id="lineChart" role="img" aria-label="กราฟเส้นแสดงพัฒนาการคะแนนแต่ละทีมรายเดือน"></canvas>
+        </div>
+        <div class="legend" id="line-legend"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">⚡ ทีมที่พัฒนาดีขึ้นมากที่สุด</div>
+        <div id="most-improved"></div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -565,6 +580,92 @@ async function loadData() {
         </div>`; 
     });
 
+    // ── LINE CHART — พัฒนาการรายเดือน ────────────────────────────────────
+    if (window._lineChart) { window._lineChart.destroy(); window._lineChart = null; }
+    window._lineChart = new Chart(document.getElementById("lineChart"), {
+      type: "line",
+      data: {
+        labels: monthsWithData,
+        datasets: data.map((d, i) => ({
+          label: d.team,
+          data: monthsWithData.map(m => {
+            const mi = MONTHS.indexOf(m);
+            return d.avgs[mi] !== null ? parseFloat(d.avgs[mi].toFixed(2)) : null;
+          }),
+          borderColor: COLORS[i % COLORS.length],
+          backgroundColor: COLORS[i % COLORS.length] + "22",
+          borderWidth: 2.5,
+          pointRadius: 5,
+          pointHoverRadius: 7,
+          pointBackgroundColor: COLORS[i % COLORS.length],
+          tension: 0.35,
+          fill: false,
+          spanGaps: false,
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "rgba(255,255,255,0.4)", font:{size:11} }, grid: { color: "rgba(255,255,255,0.04)" } },
+          y: {
+            ticks: { color: "rgba(255,255,255,0.4)", font:{size:11} },
+            grid: { color: "rgba(255,255,255,0.04)" },
+            title: { display: true, text: "เฉลี่ยผิด/คน (น้อย=ดี)", color: "rgba(255,255,255,0.3)", font:{size:10} },
+            reverse: false
+          }
+        }
+      }
+    });
+
+    // Line chart legend
+    const lineLeg = document.getElementById("line-legend"); lineLeg.innerHTML = "";
+    data.forEach((d, i) => {
+      const c = COLORS[i % COLORS.length];
+      lineLeg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${d.team}</div>`;
+    });
+
+    // ── MOST IMPROVED — ทีมที่พัฒนาดีขึ้นมากที่สุด ────────────────────────
+    const mi_el = document.getElementById("most-improved"); mi_el.innerHTML = "";
+    // คำนวณ improvement = avg เดือนแรก - avg เดือนล่าสุด (ลดลง = ดีขึ้น)
+    const improvements = data.map((d, i) => {
+      const validAvgs = d.avgs.map((v,mi) => monthsWithData.includes(MONTHS[mi]) ? v : null).filter(v => v !== null);
+      if (validAvgs.length < 2) return { ...d, i, diff: null, first: null, last: null };
+      const first = validAvgs[0];
+      const last  = validAvgs[validAvgs.length - 1];
+      return { ...d, i, diff: first - last, first, last }; // บวก = ดีขึ้น
+    }).filter(d => d.diff !== null).sort((a,b) => b.diff - a.diff);
+
+    if (improvements.length === 0) {
+      mi_el.innerHTML = `<div style="color:rgba(255,255,255,0.3);font-size:13px;text-align:center;padding:20px;font-family:'Sarabun',sans-serif;">ต้องมีข้อมูลอย่างน้อย 2 เดือนขึ้นไป</div>`;
+    } else {
+      improvements.forEach((d, rank) => {
+        const col = COLORS[d.i % COLORS.length];
+        const isTop = rank === 0;
+        const improved = d.diff > 0;
+        const diffLabel = improved
+          ? `<span style="color:#06D6A0">▼ ${d.diff.toFixed(2)}</span>`
+          : d.diff < 0
+          ? `<span style="color:#FF4D6D">▲ ${Math.abs(d.diff).toFixed(2)}</span>`
+          : `<span style="color:#aaa">— ไม่เปลี่ยน</span>`;
+
+        mi_el.innerHTML += `
+          <div style="display:flex;align-items:center;gap:10px;padding:9px 10px;
+            border-radius:10px;margin-bottom:6px;
+            background:${isTop ? 'rgba(6,214,160,0.07)' : 'rgba(255,255,255,0.02)'};
+            border:1px solid ${isTop ? 'rgba(6,214,160,0.25)' : 'rgba(255,255,255,0.05)'};">
+            <div style="font-size:18px;flex-shrink:0;">${isTop && improved ? '⚡' : rank === 1 ? '🔥' : rank === 2 ? '💪' : '📌'}</div>
+            <div style="flex:1;min-width:0;">
+              <div style="font-size:13px;font-weight:700;color:${col};">${d.team}${isTop && improved ? ' <span style="font-size:10px;background:rgba(6,214,160,0.15);color:#06D6A0;padding:2px 6px;border-radius:4px;font-weight:600;">พัฒนาดีที่สุด!</span>' : ''}</div>
+              <div style="font-size:10px;color:rgba(255,255,255,0.35);font-family:'Sarabun',sans-serif;margin-top:2px;">
+                เดือนแรก ${d.first.toFixed(2)} → ล่าสุด ${d.last.toFixed(2)}
+              </div>
+            </div>
+            <div style="font-size:14px;font-weight:700;flex-shrink:0;">${diffLabel}</div>
+          </div>`;
+      });
+    }
+
     document.getElementById("loading-area").style.display = "none";
     document.getElementById("content").style.display = "block";
 
@@ -604,4 +705,3 @@ setInterval(loadData, 5 * 60 * 1000);
 </script>
 </body>
 </html>
-
