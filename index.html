@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ETAS 1st Team Champion — โรงไฟฟ้าวังน้อย</title>
+<link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;700;900&family=Sarabun:wght@400;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080C1A;
+    --card: #0F1629;
+    --card2: #151E35;
+    --border: rgba(255,255,255,0.07);
+    --gold: #FFD600;
+    --teal: #00C896;
+    --orange: #FF6B35;
+    --purple: #A78BFA;
+    --blue: #38BDF8;
+    --pink: #FB7185;
+    --navy: #0D1B4B;
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Kanit', sans-serif;
+    background: var(--bg);
+    color: #fff;
+    min-height: 100vh;
+  }
+
+  /* ── TOP BAR ── */
+  .topbar {
+    background: var(--navy);
+    border-bottom: 2px solid var(--gold);
+    padding: 10px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .topbar-left { display: flex; align-items: center; gap: 12px; }
+  .topbar-logo { font-size: 20px; font-weight: 900; color: var(--gold); letter-spacing: 2px; }
+  .topbar-sub { font-size: 11px; color: rgba(255,255,255,0.5); font-family: 'Sarabun', sans-serif; }
+  .live-pill {
+    display: flex; align-items: center; gap: 6px;
+    background: rgba(0,200,150,0.15); border: 1px solid rgba(0,200,150,0.3);
+    color: var(--teal); font-size: 11px; font-weight: 700;
+    padding: 4px 12px; border-radius: 20px; letter-spacing: 1px;
+  }
+  .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--teal); animation: blink 1s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+  .refresh-btn {
+    background: transparent; border: 1px solid rgba(255,255,255,0.2);
+    color: rgba(255,255,255,0.6); padding: 5px 14px; border-radius: 8px;
+    cursor: pointer; font-family: 'Kanit', sans-serif; font-size: 12px;
+    transition: all .2s;
+  }
+  .refresh-btn:hover { background: rgba(255,255,255,0.07); color: #fff; }
+
+  /* ── HERO BANNER ── */
+  .hero {
+    background: linear-gradient(135deg, #0D1B4B 0%, #0F1629 60%, #080C1A 100%);
+    padding: 36px 24px 28px;
+    text-align: center;
+    border-bottom: 1px solid var(--border);
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(255,214,0,0.08) 0%, transparent 70%);
+  }
+  .hero h1 {
+    font-size: clamp(22px, 4vw, 36px);
+    font-weight: 900; letter-spacing: 3px;
+    background: linear-gradient(90deg, #FFD600, #FF6B35, #00C896, #A78BFA, #FFD600);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; background-size: 300%;
+    animation: shimmer 5s linear infinite;
+    margin-bottom: 6px;
+  }
+  @keyframes shimmer { 0%{background-position:0%} 100%{background-position:300%} }
+  .hero-sub { font-size: 13px; color: rgba(255,255,255,0.45); font-family: 'Sarabun', sans-serif; }
+  .hero-period {
+    display: inline-flex; align-items: center; gap: 8px;
+    margin-top: 10px; padding: 6px 18px;
+    background: rgba(255,214,0,0.08); border: 1px solid rgba(255,214,0,0.2);
+    border-radius: 20px; font-size: 12px; color: var(--gold);
+  }
+
+  /* ── MAIN LAYOUT ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 20px 16px; }
+
+  /* ── STATUS ── */
+  .status-bar {
+    background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 16px; margin-bottom: 16px;
+    display: flex; align-items: center; justify-content: space-between;
+    font-family: 'Sarabun', sans-serif; font-size: 12px;
+  }
+  .status-ok { color: var(--teal); }
+  .status-err { color: var(--pink); }
+  .status-loading { color: rgba(255,255,255,0.4); }
+
+  /* ── SUMMARY CARDS ── */
+  .sum-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 16px; }
+  .sum-card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px;
+    padding: 16px 14px; text-align: center; position: relative; overflow: hidden;
+  }
+  .sum-card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; }
+  .sum-card:nth-child(1)::after { background: var(--gold); }
+  .sum-card:nth-child(2)::after { background: var(--teal); }
+  .sum-card:nth-child(3)::after { background: var(--orange); }
+  .sum-card:nth-child(4)::after { background: var(--purple); }
+  .sum-icon { font-size: 20px; margin-bottom: 6px; }
+  .sum-num { font-size: 24px; font-weight: 900; line-height: 1; }
+  .sum-card:nth-child(1) .sum-num { color: var(--gold); }
+  .sum-card:nth-child(2) .sum-num { color: var(--teal); }
+  .sum-card:nth-child(3) .sum-num { color: var(--orange); }
+  .sum-card:nth-child(4) .sum-num { color: var(--purple); }
+  .sum-lbl { font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 4px; font-family: 'Sarabun', sans-serif; }
+
+  /* ── MAIN GRID ── */
+  .main-grid { display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 12px; margin-bottom: 12px; }
+  .panel {
+    background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 16px;
+  }
+  .panel-title {
+    font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.35);
+    text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 14px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .panel-title::before { content:''; width:3px; height:12px; border-radius:2px; background:var(--gold); }
+
+  /* ── LEADERBOARD ── */
+  .lb-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 10px; margin-bottom: 6px;
+    background: var(--card2); border: 1px solid var(--border);
+    transition: transform .15s, border-color .15s; cursor: default;
+    animation: fadeUp .4s ease both;
+  }
+  .lb-item:hover { transform: translateX(4px); border-color: rgba(255,255,255,0.15); }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+  .lb-rank {
+    width: 30px; height: 30px; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 13px; font-weight: 900; flex-shrink: 0;
+  }
+  .r1 { background: linear-gradient(135deg,#FFD700,#FF8C00); color:#000; }
+  .r2 { background: linear-gradient(135deg,#C0C0C0,#888); color:#000; }
+  .r3 { background: linear-gradient(135deg,#CD7F32,#8B4513); color:#fff; }
+  .rn { background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.5); }
+  .lb-info { flex: 1; min-width: 0; }
+  .lb-name { font-size: 14px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .lb-bar-bg { height: 3px; background: rgba(255,255,255,0.06); border-radius: 2px; margin-top: 5px; }
+  .lb-bar { height: 3px; border-radius: 2px; transition: width 1.4s cubic-bezier(.4,0,.2,1); }
+  .lb-right { text-align: right; flex-shrink: 0; }
+  .lb-score { font-size: 18px; font-weight: 900; }
+  .lb-lbl { font-size: 9px; color: rgba(255,255,255,0.3); font-family: 'Sarabun',sans-serif; }
+
+  /* ── MONTH TABLE ── */
+  .mtable { width: 100%; border-collapse: collapse; font-size: 12px; table-layout: fixed; }
+  .mtable th {
+    color: rgba(255,255,255,0.35); font-size: 10px; font-weight: 600;
+    padding: 6px 5px; border-bottom: 1px solid var(--border); text-align: center;
+    font-family: 'Sarabun',sans-serif;
+  }
+  .mtable th:first-child { text-align: left; }
+  .mtable td { padding: 8px 5px; text-align: center; border-bottom: 1px solid rgba(255,255,255,0.03); }
+  .mtable td:first-child { text-align: left; font-weight: 700; font-size: 13px; }
+  .mtable tr:last-child td { border-bottom: none; }
+  .best { color: #00C896; font-weight: 900; }
+  .worst { color: #FB7185; }
+  .dash-val { color: rgba(255,255,255,0.2); }
+
+  /* ── BOTTOM GRID ── */
+  .bottom-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .chart-wrap { position: relative; width: 100%; height: 200px; }
+  .legend { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: rgba(255,255,255,0.5); font-family:'Sarabun',sans-serif; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 2px; flex-shrink: 0; }
+
+  /* ── SEASON PODIUM ── */
+  .season-item {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--card2); border: 1px solid var(--border);
+    border-radius: 10px; padding: 10px 14px; margin-bottom: 7px;
+    transition: border-color .15s;
+  }
+  .season-item:hover { border-color: rgba(255,255,255,0.15); }
+  .season-medal { font-size: 20px; flex-shrink: 0; }
+  .season-name { font-size: 13px; font-weight: 700; flex: 1; }
+  .season-score { font-size: 18px; font-weight: 900; }
+  .season-lbl { font-size: 9px; color: rgba(255,255,255,0.3); font-family:'Sarabun',sans-serif; text-align: right; }
+
+  /* ── FOOTER ── */
+  .footer {
+    text-align: center; padding: 20px;
+    font-size: 11px; color: rgba(255,255,255,0.2);
+    font-family: 'Sarabun', sans-serif;
+    border-top: 1px solid var(--border);
+  }
+
+  /* ── LOADING / ERROR ── */
+  .loading-wrap {
+    display: flex; flex-direction: column; align-items: center;
+    justify-content: center; padding: 60px; gap: 14px;
+    color: rgba(255,255,255,0.3);
+  }
+  .spinner {
+    width: 36px; height: 36px;
+    border: 3px solid rgba(255,255,255,0.07);
+    border-top-color: var(--gold);
+    border-radius: 50%; animation: spin .8s linear infinite;
+  }
+  @keyframes spin { to{transform:rotate(360deg)} }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 768px) {
+    .sum-grid { grid-template-columns: repeat(2, 1fr); }
+    .main-grid, .bottom-grid { grid-template-columns: 1fr; }
+    .topbar { flex-wrap: wrap; gap: 8px; }
+    .hero h1 { font-size: 22px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="topbar-left">
+    <div class="topbar-logo">⚡ ETAS</div>
+    <div class="topbar-sub">1st Team Champion · โรงไฟฟ้าวังน้อย · แผนกงานบุคคล โทร.2350-2</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;">
+    <div class="live-pill"><span class="live-dot"></span>LIVE</div>
+    <button class="refresh-btn" onclick="loadData()">↻ รีเฟรช</button>
+  </div>
+</div>
+
+<!-- HERO -->
+<div class="hero">
+  <h1>🏆 ETAS 1st TEAM CHAMPION</h1>
+  <div class="hero-sub">ทีมเดียวกัน ไม่ทิ้งกัน</div>
+  <div class="hero-period">📅 พฤษภาคม – สิงหาคม 2569 &nbsp;|&nbsp; ประกาศผล กันยายน 2569</div>
+</div>
+
+<!-- CONTAINER -->
+<div class="container">
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <span id="status-txt" class="status-loading">⏳ กำลังเชื่อมต่อ Google Sheets...</span>
+    <span id="last-update" style="color:rgba(255,255,255,0.3);font-size:11px;"></span>
+  </div>
+
+  <!-- LOADING -->
+  <div id="loading-area" class="loading-wrap">
+    <div class="spinner"></div>
+    <span>กำลังดึงข้อมูลจาก Google Sheets...</span>
+  </div>
+
+  <!-- CONTENT -->
+  <div id="content" style="display:none">
+
+    <!-- SUMMARY -->
+    <div class="sum-grid">
+      <div class="sum-card">
+        <div class="sum-icon">🏢</div>
+        <div class="sum-num" id="s-teams">—</div>
+        <div class="sum-lbl">ทีมทั้งหมด</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">🥇</div>
+        <div class="sum-num" id="s-champ" style="font-size:16px;">—</div>
+        <div class="sum-lbl">ทีมนำอันดับ 1</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">📅</div>
+        <div class="sum-num" id="s-months">—</div>
+        <div class="sum-lbl">เดือนที่มีข้อมูล</div>
+      </div>
+      <div class="sum-card">
+        <div class="sum-icon">🎯</div>
+        <div class="sum-num" id="s-best">—</div>
+        <div class="sum-lbl">ค่าเฉลี่ยต่ำสุด</div>
+      </div>
+    </div>
+
+    <!-- MAIN GRID -->
+    <div class="main-grid">
+      <div class="panel">
+        <div class="panel-title">Leaderboard — เฉลี่ยรวม Season</div>
+        <div id="lb-list"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">คะแนนรายเดือน</div>
+        <div style="overflow-x:auto;"><div id="month-table"></div></div>
+      </div>
+    </div>
+
+    <!-- BOTTOM GRID -->
+    <div class="bottom-grid">
+      <div class="panel">
+        <div class="panel-title">เปรียบเทียบเฉลี่ยผิด/คน รายเดือน</div>
+        <div class="chart-wrap">
+          <canvas id="barChart" role="img" aria-label="กราฟเปรียบเทียบค่าเฉลี่ยผิดต่อคนรายเดือนแต่ละทีม"></canvas>
+        </div>
+        <div class="legend" id="bar-legend"></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title">อันดับสุดท้าย Season</div>
+        <div id="season-list"></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- FOOTER -->
+<div class="footer">
+  ETAS 1st Team Champion Dashboard · โรงไฟฟ้าวังน้อย · แผนกงานบุคคล โทร.2350-2<br>
+  ข้อมูลดึงจาก Google Sheets แบบ Real-time · ยิ่งเฉลี่ยผิด/คน น้อย = ยิ่งดี 🎯
+</div>
+
+<script>
+// ══════════════════════════════════════════════════════════
+// ⚙️  ตั้งค่า: ใส่ Sheet ID ของคุณที่นี่
+// ══════════════════════════════════════════════════════════
+const SHEET_ID = "1cvzGyefRcz08YTCEY1hm2c02ou_HP3wV";
+const SHEET_NAME = encodeURIComponent("📋 ข้อมูลดิบ");
+const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
+
+// Col index (0-based): A=0,B=1,C=2,D=3,E=4,F=5,G=6,H=7,I=8,J=9
+// K=10,L=11,M=12,N=13,O=14(sum),P=15(season),Q=16(rank)
+const COL_TEAM = 1, COL_AVGS = [10,11,12,13], COL_SEASON = 15, COL_RANK = 16;
+const MONTHS = ["พ.ค.","มิ.ย.","ก.ค.","ส.ค."];
+const COLORS = ["#FFD600","#00C896","#FF6B35","#A78BFA","#38BDF8","#FB7185","#4ADE80","#F472B6","#FCD34D","#60A5FA"];
+
+let chartInst = null;
+
+function parseCSV(text) {
+  return text.trim().split("\n").map(line => {
+    const cols = []; let q = false, cur = "";
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') { q = !q; }
+      else if (ch === ',' && !q) { cols.push(cur.trim().replace(/^"|"$/g,"")); cur = ""; }
+      else { cur += ch; }
+    }
+    cols.push(cur.trim().replace(/^"|"$/g,""));
+    return cols;
+  });
+}
+
+async function loadData() {
+  document.getElementById("loading-area").style.display = "flex";
+  document.getElementById("content").style.display = "none";
+  document.getElementById("status-txt").className = "status-loading";
+  document.getElementById("status-txt").textContent = "⏳ กำลังเชื่อมต่อ...";
+
+  try {
+    const res = await fetch(CSV_URL + "&t=" + Date.now());
+    if (!res.ok) throw new Error("ดึงข้อมูลไม่ได้ (HTTP " + res.status + ")");
+    const rows = parseCSV(await res.text());
+
+    // หา data rows (มีชื่อทีมจริง ไม่ใช่ placeholder)
+    const data = [];
+    for (const r of rows) {
+      const team = r[COL_TEAM]?.trim();
+      if (!team || team.startsWith("←") || team.includes("ชื่อ") || team.includes("แผนก /")) continue;
+      const season = parseFloat(r[COL_SEASON]);
+      if (isNaN(season)) continue;
+      const rank = parseInt(r[COL_RANK]);
+      const avgs = COL_AVGS.map(c => isNaN(parseFloat(r[c])) ? null : parseFloat(r[c]));
+      data.push({ team, season, rank: isNaN(rank) ? 999 : rank, avgs });
+    }
+
+    if (data.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
+
+    data.sort((a, b) => a.rank - b.rank);
+
+    const monthsWithData = MONTHS.filter((_, mi) => data.some(d => d.avgs[mi] !== null));
+    const bestScore = Math.min(...data.map(d => d.season));
+    const now = new Date().toLocaleString("th-TH", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
+
+    // Status
+    document.getElementById("status-txt").className = "status-ok";
+    document.getElementById("status-txt").innerHTML = `✅ เชื่อมต่อสำเร็จ — ${data.length} ทีม &nbsp;|&nbsp; ${monthsWithData.length} เดือนที่มีข้อมูล`;
+    document.getElementById("last-update").textContent = "อัปเดต " + now;
+
+    // Summary
+    document.getElementById("s-teams").textContent = data.length;
+    document.getElementById("s-champ").textContent = data[0].team;
+    document.getElementById("s-months").textContent = monthsWithData.length + " เดือน";
+    document.getElementById("s-best").textContent = bestScore.toFixed(2);
+
+    // LEADERBOARD
+    const maxSeason = Math.max(...data.map(d => d.season));
+    const lb = document.getElementById("lb-list"); lb.innerHTML = "";
+    data.forEach((d, i) => {
+      const col = COLORS[i % COLORS.length];
+      const rClass = i===0?"r1":i===1?"r2":i===2?"r3":"rn";
+      const rLabel = i < 3 ? ["🥇","🥈","🥉"][i] : i+1;
+      const pct = Math.round(d.season / maxSeason * 100);
+      const div = document.createElement("div");
+      div.className = "lb-item";
+      div.style.animationDelay = (i * 0.07) + "s";
+      div.innerHTML = `
+        <div class="lb-rank ${rClass}">${rLabel}</div>
+        <div class="lb-info">
+          <div class="lb-name">${d.team}</div>
+          <div class="lb-bar-bg"><div class="lb-bar" style="width:0%;background:${col}" data-w="${pct}"></div></div>
+        </div>
+        <div class="lb-right">
+          <div class="lb-score" style="color:${col}">${d.season.toFixed(2)}</div>
+          <div class="lb-lbl">เฉลี่ยผิด/คน</div>
+        </div>`;
+      lb.appendChild(div);
+    });
+    // Animate bars after paint
+    requestAnimationFrame(() => {
+      document.querySelectorAll(".lb-bar").forEach(b => { b.style.width = b.dataset.w + "%"; });
+    });
+
+    // MONTH TABLE
+    const mt = document.getElementById("month-table"); mt.innerHTML = "";
+    let tbl = `<table class="mtable"><thead><tr><th>ทีม</th>`;
+    monthsWithData.forEach(m => { tbl += `<th>${m}</th>`; });
+    tbl += `<th>Season</th></tr></thead><tbody>`;
+    data.forEach((d, i) => {
+      const col = COLORS[i % COLORS.length];
+      tbl += `<tr><td style="color:${col}">${d.team}</td>`;
+      MONTHS.forEach((m, mi) => {
+        if (!monthsWithData.includes(m)) return;
+        const v = d.avgs[mi];
+        if (v === null) { tbl += `<td class="dash-val">—</td>`; return; }
+        const vals = data.map(x => x.avgs[mi]).filter(x => x !== null);
+        const cls = v === Math.min(...vals) ? "best" : v === Math.max(...vals) ? "worst" : "";
+        tbl += `<td class="${cls}">${v.toFixed(2)}</td>`;
+      });
+      tbl += `<td style="color:${col};font-weight:700">${d.season.toFixed(2)}</td></tr>`;
+    });
+    tbl += `</tbody></table>`;
+    mt.innerHTML = tbl;
+
+    // BAR CHART
+    if (chartInst) { chartInst.destroy(); chartInst = null; }
+    chartInst = new Chart(document.getElementById("barChart"), {
+      type: "bar",
+      data: {
+        labels: monthsWithData,
+        datasets: data.map((d, i) => ({
+          label: d.team,
+          data: monthsWithData.map((m) => {
+            const mi = MONTHS.indexOf(m);
+            return d.avgs[mi] !== null ? parseFloat(d.avgs[mi].toFixed(2)) : null;
+          }),
+          backgroundColor: COLORS[i % COLORS.length] + "99",
+          borderColor: COLORS[i % COLORS.length],
+          borderWidth: 2, borderRadius: 5,
+        }))
+      },
+      options: {
+        responsive: true, maintainAspectRatio: false,
+        plugins: { legend: { display: false } },
+        scales: {
+          x: { ticks: { color: "rgba(255,255,255,0.4)", font:{size:11} }, grid: { color: "rgba(255,255,255,0.04)" } },
+          y: { ticks: { color: "rgba(255,255,255,0.4)", font:{size:11} }, grid: { color: "rgba(255,255,255,0.04)" },
+               title: { display: true, text: "เฉลี่ยผิด/คน", color: "rgba(255,255,255,0.3)", font:{size:10} } }
+        }
+      }
+    });
+
+    // Legend
+    const leg = document.getElementById("bar-legend"); leg.innerHTML = "";
+    data.forEach((d, i) => {
+      const c = COLORS[i % COLORS.length];
+      leg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${d.team}</div>`;
+    });
+
+    // SEASON RANK
+    const sl = document.getElementById("season-list"); sl.innerHTML = "";
+    const medals = ["🥇","🥈","🥉"];
+    data.forEach((d, i) => {
+      const col = COLORS[i % COLORS.length];
+      const medal = i < 3 ? medals[i] : `#${i+1}`;
+      sl.innerHTML += `
+        <div class="season-item">
+          <div class="season-medal">${medal}</div>
+          <div style="flex:1"><div class="season-name">${d.team}</div><div class="season-lbl" style="color:rgba(255,255,255,0.3)">เฉลี่ยรวม Season</div></div>
+          <div><div class="season-score" style="color:${col}">${d.season.toFixed(2)}</div><div class="season-lbl">ผิด/คน</div></div>
+        </div>`;
+    });
+
+    document.getElementById("loading-area").style.display = "none";
+    document.getElementById("content").style.display = "block";
+
+  } catch(err) {
+    document.getElementById("status-txt").className = "status-err";
+    document.getElementById("status-txt").textContent = "❌ " + err.message;
+    document.getElementById("loading-area").innerHTML = `
+      <div style="text-align:center;color:rgba(255,255,255,0.3);max-width:400px">
+        <div style="font-size:32px;margin-bottom:12px">⚠️</div>
+        <div style="font-size:14px;color:#FB7185;margin-bottom:8px">${err.message}</div>
+        <div style="font-size:12px;line-height:1.8">
+          ตรวจสอบว่า Google Sheet ตั้งค่าเป็น<br>
+          <strong style="color:#FFD600">"Anyone with the link can view"</strong><br>
+          และกรอกข้อมูลในชีต ข้อมูลดิบ แล้ว
+        </div>
+      </div>`;
+  }
+}
+
+// Auto refresh ทุก 5 นาที
+loadData();
+setInterval(loadData, 5 * 60 * 1000);
+</script>
+</body>
+</html>
