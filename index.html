@@ -403,6 +403,16 @@ async function loadData() {
 
     if (!data || data.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
 
+    // คำนวณ rank จริง — ถ้าคะแนนเท่ากันได้อันดับเดียวกัน (RANK แบบ Excel)
+    data.forEach(d => {
+      d.rank = 1 + data.filter(x => x.season < d.season).length;
+    });
+    // เรียงตามอันดับ
+    data.sort((a, b) => a.rank - b.rank || a.team.localeCompare(b.team, "th"));
+
+    // ทีมอันดับ 1 (อาจมีหลายทีม)
+    const rank1Teams = data.filter(d => d.rank === 1).map(d => d.team);
+
     const monthsWithData = MONTHS.filter((_, mi) => data.some(d => d.avgs[mi] !== null));
     const bestScore = Math.min(...data.map(d => d.season));
     const now = new Date().toLocaleString("th-TH", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
@@ -412,19 +422,22 @@ async function loadData() {
     document.getElementById("status-txt").innerHTML = `✅ เชื่อมต่อสำเร็จ — ${data.length} ทีม &nbsp;|&nbsp; ${monthsWithData.length} เดือนที่มีข้อมูล`;
     document.getElementById("last-update").textContent = "อัปเดต " + now;
 
-    // Summary
+    // Summary — แสดงทีมอันดับ 1 ทั้งหมด
     document.getElementById("s-teams").textContent = data.length;
-    document.getElementById("s-champ").textContent = data[0].team;
+    document.getElementById("s-champ").textContent = rank1Teams.length > 1
+      ? rank1Teams.join(", ")
+      : rank1Teams[0];
     document.getElementById("s-months").textContent = monthsWithData.length + " เดือน";
     document.getElementById("s-best").textContent = bestScore.toFixed(2);
 
-    // LEADERBOARD
+    // LEADERBOARD — ใช้ rank จริง รองรับเสมอกัน
     const maxSeason = Math.max(...data.map(d => d.season));
     const lb = document.getElementById("lb-list"); lb.innerHTML = "";
     data.forEach((d, i) => {
       const col = COLORS[i % COLORS.length];
-      const rClass = i===0?"r1":i===1?"r2":i===2?"r3":"rn";
-      const rLabel = i < 3 ? ["🥇","🥈","🥉"][i] : i+1;
+      const medal = d.rank === 1 ? "🥇" : d.rank === 2 ? "🥈" : d.rank === 3 ? "🥉" : null;
+      const rClass = d.rank === 1 ? "r1" : d.rank === 2 ? "r2" : d.rank === 3 ? "r3" : "rn";
+      const rLabel = medal || d.rank;
       const pct = Math.round(d.season / maxSeason * 100);
       const div = document.createElement("div");
       div.className = "lb-item";
@@ -432,7 +445,7 @@ async function loadData() {
       div.innerHTML = `
         <div class="lb-rank ${rClass}">${rLabel}</div>
         <div class="lb-info">
-          <div class="lb-name">${d.team}</div>
+          <div class="lb-name">${d.team}${d.rank === 1 && rank1Teams.length > 1 ? ' <span style="font-size:10px;color:#FFD600;font-weight:400">(เสมอ)</span>' : ''}</div>
           <div class="lb-bar-bg"><div class="lb-bar" style="width:0%;background:${col}" data-w="${pct}"></div></div>
         </div>
         <div class="lb-right">
@@ -441,7 +454,6 @@ async function loadData() {
         </div>`;
       lb.appendChild(div);
     });
-    // Animate bars after paint
     requestAnimationFrame(() => {
       document.querySelectorAll(".lb-bar").forEach(b => { b.style.width = b.dataset.w + "%"; });
     });
@@ -502,21 +514,20 @@ async function loadData() {
       leg.innerHTML += `<div class="legend-item"><div class="legend-dot" style="background:${c}"></div>${d.team}</div>`;
     });
 
-    // SEASON RANK — เรียงอันดับ 1 ลงมา
+    // SEASON RANK — เรียงอันดับ 1 ลงมา (data เรียงแล้ว)
     const sl = document.getElementById("season-list"); sl.innerHTML = "";
-    const ranked = [...data].sort((a,b) => a.rank - b.rank);
-    ranked.forEach((d, i) => {
-      const col = COLORS[data.indexOf(d) % COLORS.length];
+    const maxS = Math.max(...data.map(x=>x.season));
+    data.forEach((d, i) => {
+      const col = COLORS[i % COLORS.length];
       const isTop3 = d.rank <= 3;
       const medal = d.rank === 1 ? "🥇" : d.rank === 2 ? "🥈" : d.rank === 3 ? "🥉" : null;
       const rankDisplay = medal || `<span style="font-size:13px;font-weight:900;color:rgba(255,255,255,0.4)">#${d.rank}</span>`;
-      const maxS = Math.max(...ranked.map(x=>x.season));
       const pct = Math.round(d.season / maxS * 100);
       sl.innerHTML += `
         <div class="season-item" style="${isTop3 ? 'border-color:rgba(255,214,0,0.2);' : ''}">
           <div class="season-medal">${rankDisplay}</div>
           <div style="flex:1;min-width:0;">
-            <div class="season-name" style="color:${col}">${d.team}</div>
+            <div class="season-name" style="color:${col}">${d.team}${d.rank === 1 && rank1Teams.length > 1 ? ' <span style="font-size:10px;font-weight:400;color:#FFD600">(เสมอ)</span>' : ''}</div>
             <div style="height:3px;background:rgba(255,255,255,0.06);border-radius:2px;margin-top:5px;">
               <div style="height:3px;border-radius:2px;background:${col};width:${pct}%;"></div>
             </div>
