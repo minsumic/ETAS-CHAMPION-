@@ -381,28 +381,13 @@
 // ══════════════════════════════════════════════════════════
 // ⚙️  ตั้งค่า: ใส่ Sheet ID ของคุณที่นี่
 // ══════════════════════════════════════════════════════════
-const SHEET_ID = "1dhWOR4QtFGduL0KNSEgJve3btqKHQ6muyOKHo8uhWTw";
-// ดึง sheet แรกโดยตรง (gid=0) ไม่ต้องพึ่งชื่อ tab ที่อาจมี emoji/space ต่างกัน
-const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&gid=0`;
+// ── ใช้ Apps Script API แทน CSV (แก้ปัญหา merged cells ทั้งหมด) ──────────
+const API_URL = "https://script.google.com/macros/s/AKfycbwvlkyikyeQmheYAuI45kTS1S6dmUAH6iR8odHn5gdM56js0eOaHbFrDI6dF0eth1Z1Fw/exec";
 
 const MONTHS = ["พ.ค.","มิ.ย.","ก.ค.","ส.ค."];
 const COLORS = ["#FFD600","#00C896","#FF6B35","#A78BFA","#38BDF8","#FB7185","#4ADE80","#F472B6","#FCD34D","#60A5FA"];
 
 let chartInst = null;
-
-function parseCSV(text) {
-  return text.trim().split("\n").map(line => {
-    const cols = []; let q = false, cur = "";
-    for (let i = 0; i < line.length; i++) {
-      const ch = line[i];
-      if (ch === '"') { q = !q; }
-      else if (ch === ',' && !q) { cols.push(cur.trim().replace(/^"|"$/g,"")); cur = ""; }
-      else { cur += ch; }
-    }
-    cols.push(cur.trim().replace(/^"|"$/g,""));
-    return cols;
-  });
-}
 
 async function loadData() {
   document.getElementById("loading-area").style.display = "flex";
@@ -411,72 +396,12 @@ async function loadData() {
   document.getElementById("status-txt").textContent = "⏳ กำลังเชื่อมต่อ...";
 
   try {
-    const res = await fetch(CSV_URL + "&t=" + Date.now());
+    const res = await fetch(API_URL + "?t=" + Date.now());
     if (!res.ok) throw new Error("ดึงข้อมูลไม่ได้ (HTTP " + res.status + ")");
-    const rows = parseCSV(await res.text());
+    const json = await res.json();
+    const data = json.teams;
 
-    // ── หา data rows ──────────────────────────────────────────────────────
-    // Col B (index 1) = ชื่อทีม เสมอ
-    // หา monthPairs จากแถวข้อมูลจริงที่มีตัวเลข
-    // ตัวกรอง: ต้องมีชื่อทีม + มีตัวเลขอย่างน้อย 2 ตัวในช่วง col 2-20
-
-    // ขั้นที่ 1: รวบรวมแถวที่น่าจะเป็นข้อมูลทีม
-    const SKIP_PATTERNS = ["←","📅","📊","⚠","💡","#","ชื่อ","แผนก /","ทีม /","คน","ผิด","รวม","เฉลี่ย","อันดับ"];
-    const candidateRows = [];
-    for (const r of rows) {
-      const team = r[1]?.trim();
-      if (!team) continue;
-      if (SKIP_PATTERNS.some(p => team.startsWith(p) || team.includes(p))) continue;
-      if (team.length < 2) continue;
-      // ต้องมีตัวเลขอย่างน้อย 2 ตัว
-      const nums = [];
-      for (let c = 2; c <= 20; c++) {
-        const v = parseFloat(r[c]);
-        if (!isNaN(v) && r[c]?.trim() !== "") nums.push(c);
-      }
-      if (nums.length >= 2) candidateRows.push({ r, team, nums });
-    }
-
-    if (candidateRows.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
-
-    // ขั้นที่ 2: หา monthPairs จากแถวแรกที่มีข้อมูล
-    // จับคู่ cols ที่ติดกัน (ห่างกัน ≤ 2): (คน, ผิด)
-    let monthPairs = [];
-    const firstNums = candidateRows[0].nums;
-    for (let i = 0; i < firstNums.length - 1 && monthPairs.length < 4; i++) {
-      if (firstNums[i+1] - firstNums[i] <= 2) {
-        monthPairs.push([firstNums[i], firstNums[i+1]]);
-        i++; // ข้าม col ถัดไป
-      }
-    }
-    // fallback ถ้าหาคู่ไม่ได้
-    if (monthPairs.length === 0) {
-      for (let i = 0; i < firstNums.length && monthPairs.length < 4; i += 2) {
-        if (i + 1 < firstNums.length) monthPairs.push([firstNums[i], firstNums[i+1]]);
-      }
-    }
-
-    // ขั้นที่ 3: คำนวณ avg จากทุกแถวทีม
-    const data = [];
-    for (const { r, team } of candidateRows) {
-      const avgs = monthPairs.map(([cp, cm]) => {
-        const people   = parseFloat(r[cp]);
-        const mistakes = parseFloat(r[cm]);
-        if (isNaN(people) || people <= 0) return null;
-        if (isNaN(mistakes)) return null;
-        return mistakes / people;
-      });
-      const validAvgs = avgs.filter(v => v !== null);
-      if (validAvgs.length === 0) continue;
-      const season = validAvgs.reduce((s,v)=>s+v,0) / validAvgs.length;
-      data.push({ team, avgs, season });
-    }
-
-    if (data.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
-
-    // เรียงอันดับ: น้อย = ดี
-    data.sort((a,b) => a.season - b.season);
-    data.forEach((d,i) => { d.rank = i + 1; });
+    if (!data || data.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
 
     const monthsWithData = MONTHS.filter((_, mi) => data.some(d => d.avgs[mi] !== null));
     const bestScore = Math.min(...data.map(d => d.season));
