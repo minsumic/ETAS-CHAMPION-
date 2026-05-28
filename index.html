@@ -440,7 +440,6 @@ async function loadData() {
     const rank1Teams = data.filter(d => d.rank === 1).map(d => d.team);
 
     const monthsWithData = MONTHS.filter((_, mi) => data.some(d => d.avgs[mi] !== null));
-    const bestScore = Math.min(...data.map(d => d.season));
     const now = new Date().toLocaleString("th-TH", {day:"2-digit",month:"short",hour:"2-digit",minute:"2-digit"});
 
     // Status
@@ -448,13 +447,11 @@ async function loadData() {
     document.getElementById("status-txt").innerHTML = `✅ เชื่อมต่อสำเร็จ — ${data.length} ทีม &nbsp;|&nbsp; ${monthsWithData.length} เดือนที่มีข้อมูล`;
     document.getElementById("last-update").textContent = "อัปเดต " + now;
 
-    // Summary — แสดงทีมอันดับ 1 ทั้งหมด
+    // Summary
     document.getElementById("s-teams").textContent = data.length;
     document.getElementById("s-champ").textContent = rank1Teams.length > 1
       ? rank1Teams.join(", ")
       : rank1Teams[0];
-    document.getElementById("s-months").textContent = monthsWithData.length + " เดือน";
-    document.getElementById("s-best").textContent = bestScore.toFixed(2);
 
     // LEADERBOARD — ใช้ rank จริง รองรับเสมอกัน
     const maxSeason = Math.max(...data.map(d => d.season));
