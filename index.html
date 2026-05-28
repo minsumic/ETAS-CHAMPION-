@@ -385,13 +385,10 @@ const SHEET_ID = "1dhWOR4QtFGduL0KNSEgJve3btqKHQ6muyOKHo8uhWTw";
 const SHEET_NAME = encodeURIComponent("📋 ข้อมูลดิบ");
 const CSV_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${SHEET_NAME}`;
 
-// Sheet ใหม่มี merged cols ทำให้ CSV มีคอลัมน์เพิ่ม:
-// A=0(#), B=1(ทีม), C=2(empty-merged), D=3(พ.ค.คน), E=4(พ.ค.ผิด),
-// F=5(empty), G=6(มิ.ย.คน), H=7(มิ.ย.ผิด), I=8(empty), J=9(ก.ค.คน),
-// K=10(ก.ค.ผิด), L=11(empty), M=12(ส.ค.คน), N=13(ส.ค.ผิด), O=14(empty),
-// P=15(avg พ.ค.), Q=16(avg มิ.ย.), R=17(avg ก.ค.), S=18(avg ส.ค.),
-// T=19(รวม), U=20(season), V=21(rank)
-const COL_TEAM = 1, COL_AVGS = [15,16,17,18], COL_SEASON = 20, COL_RANK = 21;
+// คำนวณเองจากคอลัมน์คน+ครั้งผิด โดยตรง (ไม่ง้อคอลัมน์สูตรที่อาจเลื่อนจาก merged cells)
+// หลังจาก gviz export: merged header cols จะถูก flatten
+// Row 7 = header, Row 8+ = data
+// จะ scan header row หา pattern "คน" และ "ผิด" แทนการ hardcode index
 const MONTHS = ["พ.ค.","มิ.ย.","ก.ค.","ส.ค."];
 const COLORS = ["#FFD600","#00C896","#FF6B35","#A78BFA","#38BDF8","#FB7185","#4ADE80","#F472B6","#FCD34D","#60A5FA"];
 
@@ -422,30 +419,105 @@ async function loadData() {
     if (!res.ok) throw new Error("ดึงข้อมูลไม่ได้ (HTTP " + res.status + ")");
     const rows = parseCSV(await res.text());
 
-    // หา data rows — ข้ามแถว header, placeholder, และแถวว่าง
+    // ── หา header row และ column positions อัตโนมัติ ──────────────────────
+    // หาแถวที่มีชื่อทีม/แผนก เป็น header
+    let headerRow = null, headerIdx = -1;
+    for (let i = 0; i < rows.length; i++) {
+      const joined = rows[i].join("|");
+      if (joined.includes("ชื่อแผนก") || joined.includes("ชื่อทีม")) {
+        headerRow = rows[i]; headerIdx = i; break;
+      }
+    }
+
+    // col B = ทีม (index 1)
+    const COL_TEAM = 1;
+
+    // หาคู่คอลัมน์ (คนในแผนก, ครั้งผิด) ของแต่ละเดือน
+    // กลยุทธ์: scan ทุก row ตั้งแต่ row 8 หาแถวที่มีตัวเลขในช่วง col 2-15
+    // แล้วดึง pairs ที่เป็น (จำนวนคน, จำนวนครั้งผิด)
+    // จาก Sheet structure: col C,D = พ.ค. | E,F = มิ.ย. | G,H = ก.ค. | I,J = ส.ค.
+    // แต่ gviz อาจ flatten merged header เพิ่ม empty cols
+    // วิธีแน่สุด: หาทุก pair ของ numeric cols จากแถวข้อมูล
+    
+    // Scan แถวข้อมูลแรกที่มีตัวเลข เพื่อหาตำแหน่ง col จริง
+    let monthPairs = []; // [[col_people, col_mistakes], ...]
+    
+    // ลองหาจาก header row ก่อน — หา "คน" และ "ผิด" สลับกัน
+    if (headerRow) {
+      let peopleCol = -1;
+      for (let c = 2; c < headerRow.length; c++) {
+        const h = headerRow[c];
+        if (h.includes("คน") && !h.includes("ครั้ง")) {
+          peopleCol = c;
+        } else if ((h.includes("ผิด") || h.includes("ครั้ง")) && peopleCol >= 0) {
+          monthPairs.push([peopleCol, c]);
+          peopleCol = -1;
+          if (monthPairs.length === 4) break;
+        }
+      }
+    }
+
+    // fallback: ถ้า header scan ไม่ได้ ใช้ position คงที่จาก gviz pattern
+    // gviz flatten merged: A,B,C(merged-empty),D,E,F(empty),G,H,I(empty),J,K,L(empty),M,N
+    if (monthPairs.length < 2) {
+      // ค้นหาจากแถวข้อมูลจริง — หา 4 คู่ที่มีตัวเลขสลับกัน
+      for (let ri = (headerIdx >= 0 ? headerIdx+1 : 7); ri < rows.length; ri++) {
+        const r = rows[ri];
+        const team = r[1]?.trim();
+        if (!team || team.startsWith("←") || !team || team.includes("ชื่อ")) continue;
+        // หา cols ที่มีตัวเลข > 0 ในช่วง col 2-20
+        const numCols = [];
+        for (let c = 2; c <= 20; c++) {
+          const v = parseFloat(r[c]);
+          if (!isNaN(v) && v >= 0) numCols.push(c);
+        }
+        // จับคู่ทีละ 2: (คน, ผิด)
+        for (let i = 0; i+1 < numCols.length && monthPairs.length < 4; i += 2) {
+          // ตรวจว่า col ถัดกัน (หรือห่างกัน 1-2)
+          if (numCols[i+1] - numCols[i] <= 2) {
+            monthPairs.push([numCols[i], numCols[i+1]]);
+          }
+        }
+        if (monthPairs.length >= 1) break;
+      }
+    }
+
+    // ถ้ายังไม่ได้เลย ใช้ hardcode fallback ตาม gviz pattern ที่เห็นจาก Sheet
+    if (monthPairs.length === 0) {
+      monthPairs = [[3,4],[6,7],[9,10],[12,13]];
+    }
+
+    // ── อ่านข้อมูลทีม ─────────────────────────────────────────────────────
     const data = [];
-    for (const r of rows) {
+    const startRow = headerIdx >= 0 ? headerIdx + 1 : 7;
+
+    for (let ri = startRow; ri < rows.length; ri++) {
+      const r = rows[ri];
       const team = r[COL_TEAM]?.trim();
-      if (!team || team.startsWith("←") || team.includes("ชื่อ") || team.includes("แผนก /") || team.includes("ทีม")) continue;
-      if (team.startsWith("#") || team.startsWith("📅") || team.startsWith("📊")) continue;
-      const seasonRaw = r[COL_SEASON]?.trim();
-      if (!seasonRaw || seasonRaw === "-" || seasonRaw === "") continue;
-      const season = parseFloat(seasonRaw);
-      if (isNaN(season)) continue;
-      const rankRaw = r[COL_RANK]?.trim();
-      const rank = (!rankRaw || rankRaw === "-") ? 999 : parseInt(rankRaw);
-      const avgs = COL_AVGS.map(c => {
-        const v = r[c]?.trim();
-        if (!v || v === "-" || v === "") return null;
-        const n = parseFloat(v);
-        return isNaN(n) ? null : n;
+      if (!team || team.startsWith("←") || team.includes("ชื่อ") ||
+          team.startsWith("#") || team.startsWith("📅") || team.startsWith("📊") ||
+          team.startsWith("⚠") || team.startsWith("💡")) continue;
+
+      // คำนวณ avg แต่ละเดือนเอง
+      const avgs = monthPairs.map(([cp, cm]) => {
+        const people  = parseFloat(r[cp]);
+        const mistakes = parseFloat(r[cm]);
+        if (isNaN(people) || isNaN(mistakes) || people <= 0) return null;
+        return mistakes / people;
       });
-      data.push({ team, season, rank: isNaN(rank) ? 999 : rank, avgs });
+
+      const validAvgs = avgs.filter(v => v !== null);
+      if (validAvgs.length === 0) continue; // ยังไม่มีข้อมูลเดือนไหนเลย
+
+      const season = validAvgs.reduce((s,v) => s+v, 0) / validAvgs.length;
+      data.push({ team, avgs, season });
     }
 
     if (data.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
 
-    data.sort((a, b) => a.rank - b.rank);
+    // เรียงอันดับ: น้อย = ดี
+    data.sort((a,b) => a.season - b.season);
+    data.forEach((d,i) => { d.rank = i + 1; });
 
     const monthsWithData = MONTHS.filter((_, mi) => data.some(d => d.avgs[mi] !== null));
     const bestScore = Math.min(...data.map(d => d.season));
