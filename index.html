@@ -386,7 +386,7 @@
     <div class="bottom-grid">
       <div class="panel">
         <div class="panel-title">เปรียบเทียบเฉลี่ยผิด/คน รายเดือน</div>
-        <div class="chart-wrap" style="height:320px;">
+        <div class="chart-wrap" id="barChart-wrap">
           <canvas id="barChart" role="img" aria-label="กราฟแท่งแนวนอนเปรียบเทียบค่าเฉลี่ยผิดต่อคนแต่ละทีมรายเดือน"></canvas>
         </div>
       </div>
@@ -521,6 +521,9 @@ async function loadData() {
     // BAR CHART
     if (chartInst) { chartInst.destroy(); chartInst = null; }
     if (window._barChart) { window._barChart.destroy(); window._barChart = null; }
+    // คำนวณความสูงตามจำนวนทีม — 28px ต่อทีม + padding
+    const barH = Math.max(300, data.length * 28 + 80);
+    document.getElementById("barChart-wrap").style.height = barH + "px";
     window._barChart = new Chart(document.getElementById("barChart"), {
       type: "bar",
       data: {
