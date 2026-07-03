@@ -421,7 +421,7 @@
 // ⚙️  ตั้งค่า: ใส่ Sheet ID ของคุณที่นี่
 // ══════════════════════════════════════════════════════════
 // ── ใช้ Apps Script API แทน CSV (แก้ปัญหา merged cells ทั้งหมด) ──────────
-const API_URL = "https://script.google.com/macros/s/AKfycbwpNjQANPvvuc_sEE0oze1YhvGOTduOpIyZSH5DyKvfVhuB5uk0nGcUTFYfY0xHw6qJ2w/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwTVsRVIyCzfY1PoXewt3Cs8hFk8aicogteVWlJVqfKwoWd36gvJjl6k7q2ZI90fU4Vrg/exec";
 
 const MONTHS = ["พ.ค.","มิ.ย.","ก.ค.","ส.ค."];
 const COLORS = ["#FFD600","#00C896","#FF6B35","#A78BFA","#38BDF8","#FB7185","#4ADE80","#F472B6","#FCD34D","#60A5FA"];
@@ -435,9 +435,20 @@ async function loadData() {
   document.getElementById("status-txt").textContent = "⏳ กำลังเชื่อมต่อ...";
 
   try {
-    const res = await fetch(API_URL + "?t=" + Date.now());
-    if (!res.ok) throw new Error("ดึงข้อมูลไม่ได้ (HTTP " + res.status + ")");
-    const json = await res.json();
+    // ใช้ JSONP เพื่อหลีกเลี่ยง CORS
+    const json = await new Promise((resolve, reject) => {
+      const cbName = "etasCb_" + Date.now();
+      const script = document.createElement("script");
+      script.src = API_URL + "?callback=" + cbName + "&t=" + Date.now();
+      script.onerror = () => reject(new Error("โหลดข้อมูลไม่ได้"));
+      window[cbName] = (data) => {
+        delete window[cbName];
+        document.body.removeChild(script);
+        resolve(data);
+      };
+      setTimeout(() => reject(new Error("หมดเวลารอ")), 10000);
+      document.body.appendChild(script);
+    });
     const data = json.teams;
 
     if (!data || data.length === 0) throw new Error("ยังไม่มีข้อมูลในชีต — กรุณากรอกจำนวนคนและครั้งผิดพลาดก่อน");
